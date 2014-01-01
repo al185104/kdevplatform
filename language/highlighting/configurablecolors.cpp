@@ -64,21 +64,21 @@ ConfigurableHighlightingColors::ConfigurableHighlightingColors(QString highlight
 
 CodeHighlightingColors::CodeHighlightingColors(ColorCache* cache) : ConfigurableHighlightingColors("KDev Semantic Highlighting")
 {
-  ADD_COLOR(ClassType, 0x005912) //Dark green
-  ADD_COLOR(TypeAliasType, 0x35938d)
-  ADD_COLOR(EnumType, 0x6c101e) //Dark red
-  ADD_COLOR(EnumeratorType, 0x862a38) //Greyish red
-  ADD_COLOR(FunctionType, 0x21005A) //Navy blue
-  ADD_COLOR(MemberVariableType, 0x443069) //Dark Burple (blue/purple)
-  ADD_COLOR(LocalClassMemberType, 0xae7d00) //Light orange
-  ADD_COLOR(InheritedClassMemberType, 0x705000) //Dark orange
-  ADD_COLOR(LocalVariableType, 0x0C4D3C)
-  ADD_COLOR(FunctionVariableType, 0x300085) //Less dark navy blue
-  ADD_COLOR(NamespaceVariableType, 0x9F3C5F) //Rose
-  ADD_COLOR(GlobalVariableType, 0x12762B) //Grass green
-  ADD_COLOR(NamespaceType, 0x6B2840) //Dark rose
-  ADD_COLOR(ErrorVariableType, 0x8b0019) //Pure red
-  ADD_COLOR(ForwardDeclarationType, 0x5C5C5C) //Gray
+  ADD_COLOR(ClassType, 0xE6DD8D)
+  ADD_COLOR(TypeAliasType, 0xE6E0AE)
+  ADD_COLOR(EnumType, 0xE6BD8F)
+  ADD_COLOR(EnumeratorType, 0xE6CFA8)
+  ADD_COLOR(FunctionType, 0xE6E5E2)
+  ADD_COLOR(MemberVariableType, 0x66D9EF)
+  ADD_COLOR(LocalClassMemberType, 0x66D9EF)
+  ADD_COLOR(InheritedClassMemberType, 0x4EA7B6)
+  ADD_COLOR(LocalVariableType, 0xE6E0CE)
+  ADD_COLOR(FunctionVariableType, 0xE6D2BB)
+  ADD_COLOR(NamespaceVariableType, 0x9F3C5F)
+  ADD_COLOR(GlobalVariableType, 0x12762B)
+  ADD_COLOR(NamespaceType, 0x6B2840)
+  ADD_COLOR(ErrorVariableType, 0x8b0019)
+  ADD_COLOR(ForwardDeclarationType, 0xC8C8C8)
 
 /*      case ScopeType:
     case TemplateType:
