@@ -21,12 +21,10 @@
 #define KDEVPLATFORM_IDENTIFIER_H
 
 #include <QtCore/QList>
-#include <QtCore/QStack>
 #include <QtCore/QStringList>
 #include <QtCore/QMetaType>
 #include <util/kdevvarlengtharray.h>
-
-#include <ksharedptr.h>
+#include <config-kdevplatform.h>
 
 #include "../languageexport.h"
 #include "referencecounting.h"
@@ -62,10 +60,10 @@ public:
   IndexedIdentifier();
   IndexedIdentifier(const Identifier& id);
   IndexedIdentifier(const IndexedIdentifier& rhs);
-  IndexedIdentifier(IndexedIdentifier&& rhs) noexcept;
+  IndexedIdentifier(IndexedIdentifier&& rhs) Q_DECL_NOEXCEPT;
   IndexedIdentifier& operator=(const Identifier& id);
   IndexedIdentifier& operator=(const IndexedIdentifier& rhs);
-  IndexedIdentifier& operator=(IndexedIdentifier&& rhs) noexcept;
+  IndexedIdentifier& operator=(IndexedIdentifier&& rhs) Q_DECL_NOEXCEPT;
   ~IndexedIdentifier();
   bool operator==(const IndexedIdentifier& rhs) const;
   bool operator!=(const IndexedIdentifier& rhs) const;
@@ -101,10 +99,10 @@ public:
   IndexedQualifiedIdentifier();
   IndexedQualifiedIdentifier(const QualifiedIdentifier& id);
   IndexedQualifiedIdentifier(const IndexedQualifiedIdentifier& rhs);
-  IndexedQualifiedIdentifier(IndexedQualifiedIdentifier&& rhs) noexcept;
+  IndexedQualifiedIdentifier(IndexedQualifiedIdentifier&& rhs) Q_DECL_NOEXCEPT;
   IndexedQualifiedIdentifier& operator=(const QualifiedIdentifier& id);
   IndexedQualifiedIdentifier& operator=(const IndexedQualifiedIdentifier& id);
-  IndexedQualifiedIdentifier& operator=(IndexedQualifiedIdentifier&& rhs) noexcept;
+  IndexedQualifiedIdentifier& operator=(IndexedQualifiedIdentifier&& rhs) Q_DECL_NOEXCEPT;
   ~IndexedQualifiedIdentifier();
   bool operator==(const IndexedQualifiedIdentifier& rhs) const;
   bool operator==(const QualifiedIdentifier& id) const;
@@ -153,10 +151,10 @@ public:
   Identifier(const Identifier& rhs);
   Identifier(uint index);
   Identifier();
-  Identifier(Identifier&& rhs) noexcept;
+  Identifier(Identifier&& rhs) Q_DECL_NOEXCEPT;
   ~Identifier();
   Identifier& operator=(const Identifier& rhs);
-  Identifier& operator=(Identifier&& rhs) noexcept;
+  Identifier& operator=(Identifier&& rhs) Q_DECL_NOEXCEPT;
 
   static Identifier unique(int token);
 
@@ -234,10 +232,10 @@ public:
   QualifiedIdentifier(const QualifiedIdentifier& id);
   QualifiedIdentifier(uint index);
   QualifiedIdentifier();
-  QualifiedIdentifier(QualifiedIdentifier&& rhs) noexcept;
+  QualifiedIdentifier(QualifiedIdentifier&& rhs) Q_DECL_NOEXCEPT;
   ~QualifiedIdentifier();
   QualifiedIdentifier& operator=(const QualifiedIdentifier& rhs);
-  QualifiedIdentifier& operator=(QualifiedIdentifier&& rhs) noexcept;
+  QualifiedIdentifier& operator=(QualifiedIdentifier&& rhs) Q_DECL_NOEXCEPT;
 
   /**
    * Append @p id to this qualified identifier.
