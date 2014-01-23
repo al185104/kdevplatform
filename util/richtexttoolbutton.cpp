@@ -91,7 +91,7 @@ void RichTextToolButton::paintEvent(QPaintEvent *event)
         richTextPixmap.fill(Qt::transparent);
         QPainter richTextPainter(&richTextPixmap);
         QAbstractTextDocumentLayout::PaintContext ctx;
-        ctx.palette.setBrush(QPalette::Text, palette().windowText());
+        ctx.palette.setBrush(QPalette::Text, QColor("black"));
         ctx.clip=richTextPixmap.rect();
         richTextLabel.documentLayout()->draw(&richTextPainter, ctx);
 
