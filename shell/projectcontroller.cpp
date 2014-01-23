@@ -143,8 +143,8 @@ public:
         cfgDlg.setKCMArguments( QStringList()
                                     << proj->developerTempFile()
                                     << proj->projectTempFile()
-                                    << proj->projectFileUrl().url()
-                                    << proj->developerFileUrl().url()
+                                    << proj->projectFile().pathOrUrl()
+                                    << proj->developerFile().pathOrUrl()
                                     << proj->name() );
         m_configuringProject = proj;
         cfgDlg.setWindowTitle( i18n("Configure Project %1", proj->name()) );
@@ -159,7 +159,7 @@ public:
         openProjects.reserve( m_projects.size() );
 
         foreach( IProject* project, m_projects ) {
-            openProjects.append(project->projectFileUrl());
+            openProjects.append(project->projectFile().toUrl());
         }
 
         Core::self()->activeSession()->setContainedProjects( openProjects );
@@ -301,7 +301,7 @@ public:
         Project* project = new Project();
         QObject::connect(project, SIGNAL(aboutToOpen(KDevelop::IProject*)),
                          q, SIGNAL(projectAboutToBeOpened(KDevelop::IProject*)));
-        if ( !project->open( url ) )
+        if ( !project->open( Path(url) ) )
         {
             m_currentlyOpening.removeAll(url);
             q->abortOpeningProject(project);
@@ -866,9 +866,10 @@ void ProjectController::unloadUnusedProjectPlugins(IProject* proj)
 // helper method for closeProject()
 void ProjectController::closeAllOpenedFiles(IProject* proj)
 {
-    Q_FOREACH( ProjectFileItem *fileItem, proj->files() )
-    {
-        Core::self()->documentControllerInternal()->closeDocument( fileItem->url() );
+    foreach(IDocument* doc, Core::self()->documentController()->openDocuments()) {
+        if (proj->inProject(IndexedString(doc->url()))) {
+            doc->close();
+        }
     }
 }
 
@@ -931,10 +932,13 @@ ProjectModel* ProjectController::projectModel()
 
 IProject* ProjectController::findProjectForUrl( const KUrl& url ) const
 {
-    Q_FOREACH( IProject* proj, d->m_projects )
-    {
-        if( proj->inProject( url ) )
-            return proj;
+    if (d->m_projects.isEmpty()) {
+        return 0;
+    }
+
+    ProjectBaseItem* item = d->model->itemForPath(IndexedString(url));
+    if (item) {
+        return item->project();
     }
     return 0;
 }
@@ -986,7 +990,7 @@ KUrl ProjectController::projectsBaseDirectory() const
                                      KUrl( QDir::homePath()+"/projects" ) );
 }
 
-QString ProjectController::prettyFilePath(KUrl url, FormattingOptions format) const
+QString ProjectController::prettyFilePath(const KUrl& url, FormattingOptions format) const
 {
     IProject* project = Core::self()->projectController()->findProjectForUrl(url);
     
@@ -1010,7 +1014,7 @@ QString ProjectController::prettyFilePath(KUrl url, FormattingOptions format) co
         } else {
             prefixText = project->name() + '/';
         }
-        QString relativePath = project->relativeUrl(url.upUrl()).path(KUrl::AddTrailingSlash);
+        QString relativePath = KUrl::relativeUrl(project->folder(), url.upUrl());
         if(relativePath.startsWith("./"))
             relativePath = relativePath.mid(2);
         prefixText += relativePath;
@@ -1018,7 +1022,7 @@ QString ProjectController::prettyFilePath(KUrl url, FormattingOptions format) co
     return prefixText;
 }
 
-QString ProjectController::prettyFileName(KUrl url, FormattingOptions format) const
+QString ProjectController::prettyFileName(const KUrl& url, FormattingOptions format) const
 {
     IProject* project = Core::self()->projectController()->findProjectForUrl(url);
     if(project && project->folder().equals(url, KUrl::CompareWithoutTrailingSlash))
@@ -1073,14 +1077,14 @@ void ProjectController::commitCurrentProject()
     IProject* project = ICore::self()->projectController()->findProjectForUrl(url);
     
     if(project && project->versionControlPlugin()) {
-        KUrl baseUrl=project->projectItem()->url();
         IPlugin* plugin = project->versionControlPlugin();
         IBasicVersionControl* vcs=plugin->extension<IBasicVersionControl>();
         
         if(vcs) {
             ICore::self()->documentController()->saveAllDocuments(KDevelop::IDocument::Silent);
 
-            VCSCommitDiffPatchSource* patchSource = new VCSCommitDiffPatchSource(new VCSStandardDiffUpdater(vcs, baseUrl));
+            const Path basePath = project->path();
+            VCSCommitDiffPatchSource* patchSource = new VCSCommitDiffPatchSource(new VCSStandardDiffUpdater(vcs, basePath.toUrl()));
 
             bool ret = showVcsDiff(patchSource);
 
@@ -1093,18 +1097,18 @@ void ProjectController::commitCurrentProject()
     }
 }
 
-QString ProjectController::mapSourceBuild( const QString& path, bool reverse, bool fallbackRoot ) const
+QString ProjectController::mapSourceBuild( const QString& path_, bool reverse, bool fallbackRoot ) const
 {
-    KUrl url(path);
+    Path path(path_);
     IProject* sourceDirProject = 0, *buildDirProject = 0;
     Q_FOREACH(IProject* proj, d->m_projects)
     {
-        if(proj->folder().isParentOf(url))
+        if(proj->path().isParentOf(path))
             sourceDirProject = proj;
         if(proj->buildSystemManager())
         {
-            KUrl buildDir = proj->buildSystemManager()->buildDirectory(proj->projectItem());
-            if(buildDir.isValid() && buildDir.isParentOf(url))
+            Path buildDir = proj->buildSystemManager()->buildDirectory(proj->projectItem());
+            if(buildDir.isValid() && buildDir.isParentOf(path))
                 buildDirProject = proj;
         }
     }
@@ -1115,12 +1119,12 @@ QString ProjectController::mapSourceBuild( const QString& path, bool reverse, bo
         if(sourceDirProject && sourceDirProject->buildSystemManager())
         {
             // We're in the source, map into the build directory
-            QString relativePath = KUrl::relativeUrl(sourceDirProject->folder(), url);
+            QString relativePath = sourceDirProject->path().relativePath(path);
             
-            KUrl build = sourceDirProject->buildSystemManager()->buildDirectory(sourceDirProject->projectItem());
+            Path build = sourceDirProject->buildSystemManager()->buildDirectory(sourceDirProject->projectItem());
             build.addPath(relativePath);
             while(!QFile::exists(build.path()))
-                build = build.upUrl();
+                build = build.parent();
             return build.pathOrUrl();
         }else if(buildDirProject && fallbackRoot)
         {
@@ -1131,19 +1135,19 @@ QString ProjectController::mapSourceBuild( const QString& path, bool reverse, bo
         // Map-target is the source directory
         if(buildDirProject)
         {
-            KUrl build = buildDirProject->buildSystemManager()->buildDirectory(buildDirProject->projectItem());
+            Path build = buildDirProject->buildSystemManager()->buildDirectory(buildDirProject->projectItem());
             // We're in the source, map into the build directory
-            QString relativePath = KUrl::relativeUrl(build, url);
+            QString relativePath = build.relativePath(path);
             
-            KUrl source = buildDirProject->folder();
+            Path source = buildDirProject->path();
             source.addPath(relativePath);
             while(!QFile::exists(source.path()))
-                source = source.upUrl();
+                source = source.parent();
             return source.pathOrUrl();
         }else if(sourceDirProject && fallbackRoot)
         {
             // We're in the source directory, map to the root
-            return sourceDirProject->folder().pathOrUrl();
+            return sourceDirProject->path().pathOrUrl();
         }
     }
     return QString();

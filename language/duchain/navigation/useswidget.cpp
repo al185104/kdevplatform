@@ -43,7 +43,6 @@ using namespace KDevelop;
 
 
 const int tooltipContextSize = 2; //How many lines around the use are shown in the tooltip
-const bool showUsesHeader = false;
 
 ///The returned text is fully escaped
 ///@param cutOff The total count of characters that should be cut of, all in all on both sides together.
@@ -127,9 +126,9 @@ OneUseWidget::OneUseWidget(IndexedDeclaration declaration, IndexedString documen
 
     QString toolTipText;
     for(int a = start; a < end; ++a) {
-      QString lineText = code.line(a);
+      QString lineText = Qt::escape(code.line(a));
       if (m_range->range().start.line <= a && m_range->range().end.line >= a) {
-        lineText = QString("<b>") + Qt::escape(lineText) + QString("</b>");
+        lineText = QString("<b>") + lineText + QString("</b>");
       }
       if(!lineText.trimmed().isEmpty()) {
         toolTipText += lineText + "<br>";

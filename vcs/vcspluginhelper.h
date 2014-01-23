@@ -14,7 +14,6 @@
 #include "vcsexport.h"
 
 #include <kurl.h>
-#include <memory>
 #include "vcsrevision.h"
 
 class KJob;
@@ -46,6 +45,7 @@ public:
     virtual ~VcsPluginHelper();
 
     void setupFromContext(KDevelop::Context*);
+    void addContextDocument(const KUrl& url);
     KUrl::List const & contextUrlList();
     QMenu* commonActions();
 
@@ -65,13 +65,14 @@ public Q_SLOTS:
     void diffJobFinished(KJob* job);
     
     void revertDone(KJob* job);
+    void disposeEventually(bool);
 
 private Q_SLOTS:
     void delayedModificationWarningOn();
 
 private:
     struct VcsPluginHelperPrivate;
-    std::auto_ptr<VcsPluginHelperPrivate> d;
+    QScopedPointer<VcsPluginHelperPrivate> d;
 };
 
 } // namespace KDevelop
