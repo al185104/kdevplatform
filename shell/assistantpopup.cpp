@@ -78,7 +78,18 @@ AssistantPopup::AssistantPopup(KTextEditor::View* parent, const IAssistant::Ptr&
     connect(m_view, SIGNAL(destroyed(QObject*)),
             this, SLOT(deleteLater()));
     m_view->installEventFilter(this);
-    m_view->setFocus();
+}
+
+bool AssistantPopup::viewportEvent(QEvent *event)
+{
+    // For some reason, QGraphicsView posts a WindowActivate event
+    // when it is shown, even if disabled through setting the WA_ShowWithoutActivate
+    // attribute. This causes all focus-driven popups (QuickOpen, tooltips, ...)
+    // to hide when the assistant opens. Thus, prevent it from processing the Show event here.
+    if ( event->type() == QEvent::Show ) {
+        return true;
+    }
+    return QGraphicsView::viewportEvent(event);
 }
 
 AssistantPopupConfig::AssistantPopupConfig(QObject *parent): QObject(parent)
