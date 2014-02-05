@@ -39,6 +39,8 @@ AsyncTreeView::AsyncTreeView(TreeModel* model, QWidget *parent = 0)
              this, SLOT(slotClicked(QModelIndex)));
     connect (model, SIGNAL(itemChildrenReady()),
             this, SLOT(slotExpandedDataReady()));
+    
+    setTextElideMode(Qt::ElideRight);
 }
 
 
@@ -73,9 +75,9 @@ QSize AsyncTreeView::sizeHint() const
 
 void AsyncTreeView::resizeColumns()
 {
-    for (int i = 0; i < model()->columnCount(); ++i) {
-        this->resizeColumnToContents(i);
-    }
+//     for (int i = 0; i < model()->columnCount(); ++i) {
+//         this->resizeColumnToContents(i);
+//     }
     this->updateGeometry();
 }
 
