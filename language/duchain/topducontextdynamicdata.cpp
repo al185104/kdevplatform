@@ -42,8 +42,6 @@
 #define USE_MMAP
 using namespace KDevelop;
 
-static QMutex s_temporaryDataMutex(QMutex::Recursive);
-
 namespace {
 
 void saveDUChainItem(QList<ArrayWithPosition>& data, DUChainBase& item, uint& totalDataOffset) {
@@ -132,6 +130,32 @@ void verifyDataInfo(const TopDUContextDynamicData::ItemDataInfo& info, const QLi
 #endif
 }
 
+QString basePath()
+{
+  return globalItemRepositoryRegistry().path() + "/topcontexts/";
+}
+
+QString pathForTopContext(const uint topContextIndex)
+{
+  return basePath() + QString::number(topContextIndex);
+}
+
+template<typename F>
+void loadPartialData(const uint topContextIndex, F callback)
+{
+  QFile file(pathForTopContext(topContextIndex));
+  if (file.open(QIODevice::ReadOnly)) {
+     uint readValue;
+     file.read((char*)&readValue, sizeof(uint));
+     // now readValue is filled with the top-context data size
+
+     // We only read the most needed stuff, not the whole top-context data
+     QByteArray data = file.read(sizeof(TopDUContextData));
+     const TopDUContextData* topData = reinterpret_cast<const TopDUContextData*>(data.constData());
+     callback(topData);
+  }
+}
+
 }
 
 //BEGIN DUChainItemStorage
@@ -177,7 +201,6 @@ void TopDUContextDynamicData::DUChainItemStorage<Item>::clearItemIndex(Item* ite
       }
     }
   } else {
-    QMutexLocker lock(&s_temporaryDataMutex);
     const uint realIndex = 0x0fffffff - index; //We always keep the highest bit at zero
     if (realIndex == 0 || realIndex > uint(temporaryItems.size())) {
       return;
@@ -247,7 +270,6 @@ uint TopDUContextDynamicData::DUChainItemStorage<Item>::allocateItemIndex(Item* 
     items.append(item);
     return items.size();
   } else {
-    QMutexLocker lock(&s_temporaryDataMutex);
     temporaryItems.append(item);
     return 0x0fffffff - temporaryItems.size(); //We always keep the highest bit at zero
   }
@@ -274,7 +296,6 @@ template<class Item>
 Item* TopDUContextDynamicData::DUChainItemStorage<Item>::getItemForIndex(uint index) const
 {
   if (index >= (0x0fffffff/2)) {
-    QMutexLocker lock(&s_temporaryDataMutex);
     index = 0x0fffffff - index; //We always keep the highest bit at zero
     if(index == 0 || index > uint(temporaryItems.size()))
       return 0;
@@ -405,74 +426,38 @@ void KDevelop::TopDUContextDynamicData::unmap() {
   m_mappedDataSize = 0;
 }
 
+bool TopDUContextDynamicData::fileExists(uint topContextIndex)
+{
+  return QFile::exists(pathForTopContext(topContextIndex));
+}
+
 QList<IndexedDUContext> TopDUContextDynamicData::loadImporters(uint topContextIndex) {
   QList<IndexedDUContext> ret;
-
-  QString baseDir = globalItemRepositoryRegistry().path() + "/topcontexts";
-  QString fileName = baseDir + '/' + QString("%1").arg(topContextIndex);
-  QFile file(fileName);
-  if(file.open(QIODevice::ReadOnly)) {
-     uint readValue;
-     file.read((char*)&readValue, sizeof(uint));
-     //now readValue is filled with the top-context data size
-
-     //We only read the most needed stuff, not the whole top-context data
-     QByteArray data = file.read(readValue);
-     const TopDUContextData* topData = reinterpret_cast<const TopDUContextData*>(data.constData());
-     FOREACH_FUNCTION(const IndexedDUContext& importer, topData->m_importers)
+  loadPartialData(topContextIndex, [&ret] (const TopDUContextData* topData) {
+    ret.reserve(topData->m_importersSize());
+    FOREACH_FUNCTION(const IndexedDUContext& importer, topData->m_importers)
       ret << importer;
-  }
-
+  });
   return ret;
 }
 
 QList<IndexedDUContext> TopDUContextDynamicData::loadImports(uint topContextIndex) {
   QList<IndexedDUContext> ret;
-
-  QString baseDir = globalItemRepositoryRegistry().path() + "/topcontexts";
-  QString fileName = baseDir + '/' + QString("%1").arg(topContextIndex);
-  QFile file(fileName);
-  if(file.open(QIODevice::ReadOnly)) {
-     uint readValue;
-     file.read((char*)&readValue, sizeof(uint));
-     //now readValue is filled with the top-context data size
-
-     //We only read the most needed stuff, not the whole top-context data
-     QByteArray data = file.read(readValue);
-     const TopDUContextData* topData = reinterpret_cast<const TopDUContextData*>(data.constData());
-     FOREACH_FUNCTION(const DUContext::Import& import, topData->m_importedContexts)
+  loadPartialData(topContextIndex, [&ret] (const TopDUContextData* topData) {
+    ret.reserve(topData->m_importedContextsSize());
+    FOREACH_FUNCTION(const DUContext::Import& import, topData->m_importedContexts)
       ret << import.indexedContext();
-  }
-
+  });
   return ret;
 }
 
-bool TopDUContextDynamicData::fileExists(uint topContextIndex)
-{
-  QString baseDir = globalItemRepositoryRegistry().path() + "/topcontexts";
-  QString fileName = baseDir + '/' + QString("%1").arg(topContextIndex);
-  QFile file(fileName);
-  return file.exists();
-}
-
 IndexedString TopDUContextDynamicData::loadUrl(uint topContextIndex) {
-
-  QString baseDir = globalItemRepositoryRegistry().path() + "/topcontexts";
-  QString fileName = baseDir + '/' + QString("%1").arg(topContextIndex);
-  QFile file(fileName);
-  if(file.open(QIODevice::ReadOnly)) {
-     uint readValue;
-     file.read((char*)&readValue, sizeof(uint));
-     //now readValue is filled with the top-context data size
-
-     //We only read the most needed stuff, not the whole top-context data
-     QByteArray data = file.read(sizeof(TopDUContextData));
-     const TopDUContextData* topData = reinterpret_cast<const TopDUContextData*>(data.constData());
-     Q_ASSERT(topData->m_url.isEmpty() || topData->m_url.index() >> 16);
-     return topData->m_url;
-  }
-
-  return IndexedString();
+  IndexedString url;
+  loadPartialData(topContextIndex, [&url] (const TopDUContextData* topData) {
+    Q_ASSERT(topData->m_url.isEmpty() || topData->m_url.index() >> 16);
+    url = topData->m_url;
+  });
+  return url;
 }
 
 void TopDUContextDynamicData::loadData() const {
@@ -485,11 +470,7 @@ void TopDUContextDynamicData::loadData() const {
   Q_ASSERT(!m_dataLoaded);
   Q_ASSERT(m_data.isEmpty());
 
-  QString baseDir = globalItemRepositoryRegistry().path() + "/topcontexts";
-  KStandardDirs::makeDir(baseDir);
-
-  QString fileName = baseDir + '/' + QString("%1").arg(m_topContext->ownIndex());
-  QFile* file = new QFile(fileName);
+  QFile* file = new QFile(pathForTopContext(m_topContext->ownIndex()));
   bool open = file->open(QIODevice::ReadOnly);
   Q_UNUSED(open);
   Q_ASSERT(open);
@@ -513,7 +494,7 @@ void TopDUContextDynamicData::loadData() const {
     m_mappedDataSize = file->size() - file->pos();
     file->close(); //Close the file, so there is less open file descriptors(May be problematic)
   }else{
-    kDebug() << "Failed to map" << fileName;
+    kDebug() << "Failed to map" << file->fileName();
   }
   
 #endif
@@ -528,14 +509,10 @@ void TopDUContextDynamicData::loadData() const {
 }
 
 TopDUContext* TopDUContextDynamicData::load(uint topContextIndex) {
-  QString baseDir = globalItemRepositoryRegistry().path() + "/topcontexts";
-  KStandardDirs::makeDir(baseDir);
-
-  QString fileName = baseDir + '/' + QString("%1").arg(topContextIndex);
-  QFile file(fileName);
+  QFile file(pathForTopContext(topContextIndex));
   if(file.open(QIODevice::ReadOnly)) {
     if(file.size() == 0) {
-      kWarning() << "Top-context file is empty" << fileName;
+      kWarning() << "Top-context file is empty" << file.fileName();
       return 0;
     }
     QVector<ItemDataInfo> contextDataOffsets;
@@ -604,9 +581,7 @@ void TopDUContextDynamicData::deleteOnDisk() {
 }
 
 QString KDevelop::TopDUContextDynamicData::filePath() const {
-  QString baseDir = globalItemRepositoryRegistry().path() + "/topcontexts";
-  KStandardDirs::makeDir(baseDir);
-  return baseDir + '/' + QString("%1").arg(m_topContext->ownIndex());
+  return pathForTopContext(m_topContext->ownIndex());
 }
 
 bool TopDUContextDynamicData::hasChanged() const
@@ -680,7 +655,9 @@ void TopDUContextDynamicData::store() {
     Q_ASSERT(!m_topContext->d_func()->isDynamic());
 
     unmap();
-    
+
+    KStandardDirs::makeDir(basePath());
+
     QFile file(filePath());
     if(file.open(QIODevice::WriteOnly)) {
 
