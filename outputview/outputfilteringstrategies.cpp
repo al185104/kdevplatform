@@ -180,6 +180,8 @@ const QVector<ActionFormat> ACTION_FILTERS {
     ActionFormat( I18N_NOOP2_NOSTRIP("", "compiling"), "dcopidl2cpp", "dcopidl2cpp (?:\\S* )*([^\\s;]+)", 1 ),
     // match against Entering directory to update current build dir
     ActionFormat( "", "cd", "", "make\\[\\d+\\]: Entering directory (\\`|\\')(.+)'", 2),
+    // waf and scons use the same basic convention as make
+    ActionFormat( "", "cd", "", "(Waf|scons): Entering directory (\\`|\\')(.+)'", 3)
 };
 
 }
@@ -371,7 +373,19 @@ FilteredItem ScriptErrorFilterStrategy::errorInLine(const QString& line)
 
 const QList<ErrorFormat> QT_APPLICATION_ERROR_FILTERS = QList<ErrorFormat>()
     // ASSERT: "errors().isEmpty()" in file /foo/bar.cpp, line 49
-    << ErrorFormat("^ASSERT: \"(.*)\" in file (.*), line ([0-9]+)$", 2, 3, -1);
+    << ErrorFormat("^ASSERT: \"(.*)\" in file (.*), line ([0-9]+)$", 2, 3, -1)
+    // QFATAL : FooTest::testBar() ASSERT: "index.isValid()" in file /foo/bar.cpp, line 32
+    << ErrorFormat("^QFATAL : (.*) ASSERT: \"(.*)\" in file (.*), line ([0-9]+)$", 3, 4, -1)
+    // Catch:
+    // FAIL!  : FooTest::testBar() Compared pointers are not the same
+    //    Actual   ...
+    //    Expected ...
+    //    Loc: [/foo/bar.cpp(33)]
+    //
+    // Do *not* catch:
+    //    ...
+    //    Loc: [Unknown file(0)]
+    << ErrorFormat("^   Loc: \\[(.*)\\(([1-9][0-9]*)\\)\\]$", 1, 2, -1);
 
 NativeAppErrorFilterStrategy::NativeAppErrorFilterStrategy()
 {
