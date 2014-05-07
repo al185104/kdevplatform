@@ -36,6 +36,8 @@
 #include "../core.h"
 #include "../plugincontroller.h"
 
+#include "testfilepaths.h"
+
 using namespace KDevelop;
 
 using QTest::kWaitForSignal;
@@ -45,8 +47,8 @@ using QTest::kWaitForSignal;
 void PluginControllerTest::initTestCase()
 {
     // This is needed so we don't have to install our test plugin, adds kdevplatform/shell/tests and builddir/lib to the KDEDIRS variable
-    KGlobal::mainComponent().dirs()->addResourceDir( "module", BUILD_DIR"/lib" );
-    KGlobal::mainComponent().dirs()->addResourceDir( "services", KDESRCDIR"/share/kde4/services" );
+    KGlobal::mainComponent().dirs()->addResourceDir( "module", TEST_BIN_DIR "/../../lib" );
+    KGlobal::mainComponent().dirs()->addResourceDir( "services", TEST_BIN_DIR);
 
     kDebug() << "module dirs:" << KGlobal::mainComponent().dirs()->resourceDirs("module");
     QString kdedirs = "";
@@ -60,7 +62,7 @@ void PluginControllerTest::initTestCase()
             break;
         }
     }
-    kdedirs = QString(KDESRCDIR":")+kdedirs;
+    kdedirs = QString(TEST_BIN_DIR":")+kdedirs;
     KProcess p;
     p.setEnv( "KDEDIRS", kdedirs, true );
     p.setProgram( "kbuildsycoca4" );
@@ -108,11 +110,14 @@ void PluginControllerTest::loadUnloadPlugin()
     QCOMPARE( args.at(0).toString(), QString( "kdevnonguiinterface" ) );
 
     QSignalSpy spy2(m_pluginCtrl, SIGNAL(pluginUnloaded(KDevelop::IPlugin*)) );
+    QSignalSpy spy3(m_pluginCtrl, SIGNAL(unloadingPlugin(KDevelop::IPlugin*)) );
     QVERIFY(spy2.isValid());
+    QVERIFY(spy3.isValid());
     m_pluginCtrl->unloadPlugin( "kdevnonguiinterface" );
     QVERIFY( !m_pluginCtrl->plugin( "kdevnonguiinterface" ) );
 
     QCOMPARE(spy2.size(), 1);
+    QCOMPARE(spy3.size(), 1);
 }
 
 void PluginControllerTest::loadFromExtension()
@@ -120,6 +125,14 @@ void PluginControllerTest::loadFromExtension()
     IPlugin* plugin = m_pluginCtrl->pluginForExtension( "org.kdevelop.ITestNonGuiInterface" );
     QVERIFY( plugin );
     QCOMPARE( plugin->extensions(), QStringList() << "org.kdevelop.ITestNonGuiInterface" );
+}
+
+void PluginControllerTest::benchPluginForExtension()
+{
+    QBENCHMARK {
+        IPlugin* plugin = m_pluginCtrl->pluginForExtension( "org.kdevelop.ITestNonGuiInterface" );
+        QVERIFY( plugin );
+    }
 }
 
 QTEST_KDEMAIN( PluginControllerTest, GUI)
