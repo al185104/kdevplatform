@@ -24,10 +24,13 @@
 
 #include <language/backgroundparser/parsejob.h>
 #include <language/backgroundparser/backgroundparser.h>
+#include <language/duchain/definitions.h>
 #include <language/duchain/duchain.h>
 #include <language/duchain/duchainlock.h>
-#include <language/duchain/dumpchain.h>
+#include <language/duchain/duchaindumper.h>
+#include <language/duchain/dumpdotgraph.h>
 #include <language/duchain/problem.h>
+#include <language/duchain/persistentsymboltable.h>
 
 #include <interfaces/ilanguage.h>
 #include <interfaces/iplugincontroller.h>
@@ -82,7 +85,7 @@ void Manager::init()
     KUrl::List includes;
 
     if(m_args->count() == 0) {
-        std::cerr << "Need directory to duchainify" << std::endl;
+        std::cerr << "Need file or directory to duchainify" << std::endl;
         QCoreApplication::exit(1);
     }
 
@@ -149,12 +152,12 @@ void Manager::init()
     m_allFilesAdded = 1;
 
     if ( m_total ) {
-        std::cout << "Added " << m_total << " files to the background parser" << std::endl;
+        std::cerr << "Added " << m_total << " files to the background parser" << std::endl;
         const int threads = ICore::self()->languageController()->backgroundParser()->threadCount();
-        std::cout << "parsing with " << threads << " threads" << std::endl;
+        std::cerr << "parsing with " << threads << " threads" << std::endl;
         ICore::self()->languageController()->backgroundParser()->parseDocuments();
     } else {
-        std::cout << "no files added to the background parser" << std::endl;
+        std::cerr << "no files added to the background parser" << std::endl;
         QCoreApplication::exit(0);
     }
 }
@@ -165,25 +168,47 @@ void Manager::updateReady(IndexedString url, ReferencedTopDUContext topContext)
     
     m_waiting.remove(url.toUrl());
     
-    std::cout << "processed " << (m_total - m_waiting.size()) << " out of " << m_total << std::endl;
-    if (m_args->isSet("dump-errors") && topContext) {
+    std::cerr << "processed " << (m_total - m_waiting.size()) << " out of " << m_total << std::endl;
+    if (!topContext)
+        return;
+
+    std::cerr << std::endl;
+
+    QTextStream stream(stdout);
+
+    if (m_args->isSet("dump-definitions")) {
         DUChainReadLocker lock;
-        if (!topContext->problems().isEmpty()) {
-            std::cout << topContext->problems().size() << " problems encountered in " << qPrintable(topContext->url().str()) << std::endl;
-            foreach(const ProblemPointer& p, topContext->problems()) {
-                std::cout << "  " << qPrintable(p->description()) << "\n    range: "
-                        << "[(" << p->finalLocation().start.line << ", " << p->finalLocation().start.column << "),"
-                        << " (" << p->finalLocation().end.line << ", " << p->finalLocation().end.column << ")]" << std::endl;
-            }
-        }
+        std::cerr << "Definitions:" << std::endl;
+        DUChain::definitions()->dump(stream);
+        std::cerr << std::endl;
     }
 
-    if (m_args->isSet("dump-context") && topContext) {
+    if (m_args->isSet("dump-symboltable")) {
         DUChainReadLocker lock;
-        dumpDUContext(topContext);
+        std::cerr << "PersistentSymbolTable:" << std::endl;
+        PersistentSymbolTable::self().dump(stream);
+        std::cerr << std::endl;
+    }
+
+    DUChainDumper::Features features;
+    if (m_args->isSet("dump-context")) {
+        features |= DUChainDumper::DumpContext;
+    }
+    if (m_args->isSet("dump-errors")) {
+        features |= DUChainDumper::DumpProblems;
+    }
+
+    DUChainReadLocker lock;
+    std::cerr << "Context:" << std::endl;
+    DUChainDumper dumpChain(features);
+    dumpChain.dump(topContext, m_args->getOption("dump-depth").toInt());
+
+    if (m_args->isSet("dump-graph")) {
+        DumpDotGraph dumpGraph;
+        const QString dotOutput = dumpGraph.dotGraph(topContext);
+        std::cout << qPrintable(dotOutput) << std::endl;
     }
 }
-
 
 void Manager::addToBackgroundParser(QString path, TopDUContext::Features features)
 {
@@ -217,7 +242,7 @@ QSet< KUrl > Manager::waiting()
 
 void Manager::finish()
 {
-    std::cout << "ready" << std::endl;
+    std::cerr << "ready" << std::endl;
     QApplication::quit();
 }
 
@@ -225,11 +250,11 @@ using namespace KDevelop;
 int main(int argc, char** argv)
 {
     KAboutData aboutData( "duchainify", 0, ki18n( "duchainify" ),
-                          "1", ki18n("Duchain builder application"), KAboutData::License_GPL,
+                          "1", ki18n("DUChain builder application"), KAboutData::License_GPL,
                           ki18n( "(c) 2009 David Nolden" ), KLocalizedString(), "http://www.kdevelop.org" );
     KCmdLineArgs::init( argc, argv, &aboutData, KCmdLineArgs::CmdLineArgNone );
     KCmdLineOptions options;
-    options.add("+dir", ki18n("directory"));
+    options.add("+path", ki18n("file or directory"));
     
     options.add("w").add("warnings", ki18n("Show warnings"));
     options.add("V").add("verbose", ki18n("Show warnings and debug output"));
@@ -238,6 +263,10 @@ int main(int argc, char** argv)
     options.add("t").add("threads <count>", ki18n("Number of threads to use"));
     options.add("f").add("features <features>", ki18n("Features to build. Options: empty, simplified-visible-declarations, visible-declarations (default), all-declarations, all-declarations-and-uses, all-declarations-and-uses-and-AST"));
     options.add("dump-context", ki18n("Print complete Definition-Use Chain on successful parse"));
+    options.add("dump-definitions", ki18n("Print complete DUChain Definitions repository on successful parse"));
+    options.add("dump-symboltable", ki18n("Print complete DUChain PersistentSymbolTable repository on successful parse"));
+    options.add("dump-depth <depth>", ki18n("Number defining the maximum depth where declaration details are printed"));
+    options.add("dump-graph", ki18n("Dump DUChain graph (in .dot format)"));
     options.add("d").add("dump-errors", ki18n("Print problems encountered during parsing"));
     KCmdLineArgs::addCmdLineOptions( options );
 

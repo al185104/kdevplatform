@@ -439,7 +439,7 @@ IPlugin *PluginController::loadPluginInternal( const QString &pluginId )
     if( info.property(KEY_Mode) == KEY_Gui
         && Core::self()->setupFlags() == Core::NoUi )
     {
-        kDebug() << "Unable to load plugin named" << pluginId << ". Running in No-Ui mode, but the plugin says it needs a GUI";
+        kDebug() << "Not loading plugin named" << pluginId << ". Running in No-Ui mode, but the plugin says it needs a GUI";
         return 0;
     }
 
@@ -462,6 +462,8 @@ IPlugin *PluginController::loadPluginInternal( const QString &pluginId )
         auto factory = loader.factory();
         if (factory) {
             plugin = factory->create<IPlugin>(d->core);
+        } else {
+            kWarning() << "Failed to load" << pluginId << "-" << loader.errorString();
         }
     }
 

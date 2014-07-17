@@ -38,6 +38,7 @@ set(kdevplatformlanguage_LIB_SRCS
     duchain/localindexeddeclaration.cpp
     duchain/topducontext.cpp
     duchain/topducontextdynamicdata.cpp
+    duchain/topducontextutils.cpp
     duchain/functiondefinition.cpp
     duchain/declaration.cpp
     duchain/classmemberdeclaration.cpp
@@ -60,7 +61,7 @@ set(kdevplatformlanguage_LIB_SRCS
     duchain/definitions.cpp
     duchain/uses.cpp
     duchain/importers.cpp
-    duchain/dumpchain.cpp
+    duchain/duchaindumper.cpp
     duchain/indexedstring.cpp
     duchain/duchainregister.cpp
     duchain/persistentsymboltable.cpp
@@ -111,7 +112,6 @@ set(kdevplatformlanguage_LIB_SRCS
     interfaces/codecontext.cpp
     interfaces/icreateclasshelper.cpp
     interfaces/icontextbrowser.cpp
-    interfaces/idefinesandincludesmanager.cpp
 
     codecompletion/codecompletion.cpp
     codecompletion/codecompletionworker.cpp
@@ -196,7 +196,6 @@ install(FILES
     interfaces/icreateclasshelper.h
     interfaces/icontextbrowser.h
     interfaces/abbreviations.h
-    interfaces/idefinesandincludesmanager.h
     DESTINATION ${INCLUDE_INSTALL_DIR}/kdevplatform/language/interfaces COMPONENT Devel
 )
 
@@ -263,7 +262,7 @@ install(FILES
     duchain/aliasdeclaration.h
     duchain/dumpdotgraph.h
     duchain/duchainutils.h
-    duchain/dumpchain.h
+    duchain/duchaindumper.h
     duchain/indexedstring.h
     duchain/declarationid.h
     duchain/appendedlist.h

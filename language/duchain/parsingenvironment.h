@@ -19,11 +19,9 @@
 #ifndef KDEVPLATFORM_PARSINGENVIRONMENT_H
 #define KDEVPLATFORM_PARSINGENVIRONMENT_H
 
-#include <QtCore/QDateTime>
 #include <QtCore/QString>
 
 #include <ksharedptr.h>
-#include <kurl.h>
 
 #include "indexedstring.h"
 
@@ -34,9 +32,7 @@
 
 namespace KDevelop
 {
-class ModificationRevisionSet;
-class ModificationRevision; //Can be found in  editorintegrator.h
-class IndexedTopDUContext;
+
 /**
  * Just an enumeration of a few parsing-environment types.
  * Enumerate a few possible future parsing-environment types.
@@ -119,12 +115,12 @@ typedef KSharedPtr<ParsingEnvironmentFile> ParsingEnvironmentFilePointer;
  * This represents all information about a specific parsed file that is needed
  * to match the file to a parsing-environment.
  *
- * It is KShared because it is embedded into top-du-contexts and at the same time
+ * It is QSharedData because it is embedded into top-du-contexts and at the same time
  * references may be held by ParsingEnvironmentManager.
  *
  * \warning Access to this class must be serialized through du-chain locking
  * */
-class KDEVPLATFORMLANGUAGE_EXPORT ParsingEnvironmentFile : public DUChainBase, public KShared
+class KDEVPLATFORMLANGUAGE_EXPORT ParsingEnvironmentFile : public DUChainBase, public QSharedData
 {
   public:
     virtual ~ParsingEnvironmentFile();
