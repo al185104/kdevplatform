@@ -18,8 +18,8 @@ set(kdevplatformutil_LIB_SRCS
     executecompositejob.cpp
     fileutils.cpp
     shellutils.cpp
-    sequentiallyrunjobs.cpp
     multilevellistview.cpp
+    objectlist.cpp
     placeholderitemproxymodel.cpp
     projecttestjob.cpp
     path.cpp
@@ -76,8 +76,8 @@ install( FILES
     convenientfreelist.h
     spinlock.h
     fileutils.h
-    sequentiallyrunjobs.h
     multilevellistview.h
+    objectlist.h
     placeholderitemproxymodel.h
     projecttestjob.h
     path.h
