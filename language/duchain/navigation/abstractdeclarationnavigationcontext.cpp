@@ -86,7 +86,7 @@ QString AbstractDeclarationNavigationContext::html(bool shorten)
     const AbstractFunctionDeclaration* function = dynamic_cast<const AbstractFunctionDeclaration*>(m_declaration.data());
     if( function ) {
       htmlFunction();
-    } else if( m_declaration->isTypeAlias() || m_declaration->kind() == Declaration::Instance ) {
+    } else if( m_declaration->isTypeAlias() || m_declaration->type<EnumeratorType>() || m_declaration->kind() == Declaration::Instance ) {
       if( m_declaration->isTypeAlias() )
         modifyHtml() += importantHighlight("typedef ");
 
@@ -98,11 +98,20 @@ QString AbstractDeclarationNavigationContext::html(bool shorten)
         //Do not show the own name as type of typedefs
         if(useType.cast<TypeAliasType>())
           useType = useType.cast<TypeAliasType>()->type();
-      } 
-      
+      }
+
       eventuallyMakeTypeLinks( useType );
 
-      modifyHtml() += ' ' + nameHighlight(Qt::escape(declarationName(m_declaration))) + "<br>";
+      modifyHtml() += ' ' + nameHighlight(Qt::escape(declarationName(m_declaration)));
+
+      if(auto integralType = m_declaration->type<ConstantIntegralType>()) {
+        const QString plainValue = integralType->valueAsString();
+        if (!plainValue.isEmpty()) {
+          modifyHtml() += QString(" = %1").arg(plainValue);
+        }
+      }
+
+      modifyHtml() += "<br>";
     }else{
       if( m_declaration->kind() == Declaration::Type && m_declaration->abstractType().cast<StructureType>() ) {
         htmlClass();
@@ -218,8 +227,6 @@ QString AbstractDeclarationNavigationContext::html(bool shorten)
       modifyHtml() += labelHighlight(i18n("Kind: %1 %2 ", importantHighlight(Qt::escape(kind)), detailsHtml));
     else
       modifyHtml() += labelHighlight(i18n("Kind: %1 ", importantHighlight(Qt::escape(kind))));
-  } else if( !detailsHtml.isEmpty() ) {
-    modifyHtml() += labelHighlight(i18n("Modifiers: %1 ",  importantHighlight(Qt::escape(kind))));
   }
 
   modifyHtml() += "<br />";
