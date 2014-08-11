@@ -170,17 +170,12 @@ Declaration::~Declaration()
   //Only perform the actions when the top-context isn't being deleted, or when it hasn't been stored to disk
   if(persistentlyDestroying()) {
     DUCHAIN_D_DYNAMIC(Declaration);
+
     // Inserted by the builder after construction has finished.
     if( d->m_internalContext.context() )
       d->m_internalContext.context()->setOwner(0);
 
-    if (d->m_inSymbolTable && !d->m_identifier.isEmpty()) {
-      QualifiedIdentifier id = qualifiedIdentifier();
-      PersistentSymbolTable::self().removeDeclaration(id, this);
-      CodeModel::self().removeItem(url(), id);
-    }
-
-    d->m_inSymbolTable = false;
+    setInSymbolTable(false);
   }
 
   // If the parent-context already has dynamic data, like for example any temporary context,
@@ -240,8 +235,6 @@ void Declaration::rebuildDynamicData(DUContext* parent, uint ownIndex)
   m_context = parent;
   m_topContext = parent->topContext();
   m_indexInTopContext = ownIndex;
-
-  parent->m_dynamicData->addDeclarationToHash(d_func()->m_identifier.identifier(), this);
 }
 
 void Declaration::setIdentifier(const Identifier& identifier)
@@ -251,9 +244,6 @@ void Declaration::setIdentifier(const Identifier& identifier)
   bool wasInSymbolTable = d->m_inSymbolTable;
 
   setInSymbolTable(false);
-
-  if( m_context && !d->m_anonymousInContext )
-    m_context->changingIdentifier( this, d->m_identifier, identifier );
 
   d->m_identifier = identifier;
 

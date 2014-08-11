@@ -539,11 +539,6 @@ public:
    */
   void cleanIfNotEncountered(const QSet<DUChainBase*>& encountered);
 
-  /**
-   * Used exclusively by Declaration, do not use this.
-   */
-  void changingIdentifier( Declaration* decl, const Identifier& from, const Identifier& to );
-
    /**
     * Uses:
     * A "Use" represents any position in a document where a Declaration is used literally.
@@ -755,11 +750,6 @@ public:
                                         const CursorInRevision& position, const AbstractType::Ptr& dataType,
                                         DeclarationList& ret, const TopDUContext* source, SearchFlags flags,
                                         uint depth ) const;
-
-  /**
-   * Call this after parsing is finished. It will optimize the internal vectors to reduce memory-usage.
-   */
-  void squeeze();
 
   /**
    * Returns the qualified identifier @p id with all aliases (for example namespace imports) applied
