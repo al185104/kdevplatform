@@ -22,11 +22,10 @@ Boston, MA 02110-1301, USA.
 
 #include <kconfiggroup.h>
 #include <kapplication.h>
-#include <kaboutapplicationdialog.h>
+#include <KXmlGui/kaboutapplicationdialog.h>
 #include <knotifyconfigwidget.h>
 #include <ktogglefullscreenaction.h>
-
-#include <ktexteditor/editor.h>
+#include <kcomponentdata.h>
 
 #include <sublime/area.h>
 #include <sublime/view.h>
@@ -40,6 +39,8 @@ Boston, MA 02110-1301, USA.
 #include "mainwindow.h"
 #include "loadedpluginsdialog.h"
 #include <interfaces/ipartcontroller.h>
+
+#include <KAboutApplicationDialog>
 
 namespace KDevelop {
 
@@ -85,7 +86,7 @@ void MainWindowPrivate::gotoPreviousWindow()
 
 void MainWindowPrivate::newToolbarConfig()
 {
-    m_mainWindow->applyMainWindowSettings( KConfigGroup(KGlobal::config(), "MainWindow") );
+    m_mainWindow->applyMainWindowSettings( KConfigGroup(KSharedConfig::openConfig(), "MainWindow") );
 }
 
 void MainWindowPrivate::settingsDialog()
@@ -195,7 +196,7 @@ void MainWindowPrivate::configureNotifications()
 
 void MainWindowPrivate::showAboutPlatform()
 {
-    KAboutApplicationDialog dlg(Core::self()->componentData().aboutData(), m_mainWindow );
+    KAboutApplicationDialog dlg(Core::self()->aboutData(), m_mainWindow );
     dlg.exec();
 }
 
@@ -203,15 +204,6 @@ void MainWindowPrivate::showLoadedPlugins()
 {
     LoadedPluginsDialog dlg(m_mainWindow);
     dlg.exec();
-}
-
-void MainWindowPrivate::showEditorConfig()
-{
-    KTextEditor::Editor* editor = Core::self()->partController()->editorPart();
-    if (editor->configDialogSupported()) {
-        editor->configDialog(m_mainWindow);
-        editor->writeConfig();
-    }
 }
 
 void MainWindowPrivate::contextMenuFileNew()

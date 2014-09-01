@@ -52,7 +52,7 @@
 #include <vcs/vcsdiff.h>
 #include <vcs/widgets/vcseventwidget.h>
 #include <language/duchain/duchainbase.h>
-#include <language/duchain/indexedstring.h>
+#include <serialization/indexedstring.h>
 #include <language/duchain/duchainlock.h>
 #include <language/duchain/duchain.h>
 #include <language/interfaces/editorcontext.h>
@@ -68,7 +68,6 @@
 #include <interfaces/isession.h>
 #include "vcsevent.h"
 #include <KCompositeJob>
-#include <KTextEditor/HighlightInterface>
 #include <QClipboard>
 #include <QApplication>
 #include <ktexteditor/modificationinterface.h>
@@ -82,30 +81,30 @@ struct VcsPluginHelper::VcsPluginHelperPrivate {
     IBasicVersionControl * vcs;
 
     KUrl::List ctxUrls;
-    KAction * commitAction;
-    KAction * addAction;
-    KAction * updateAction;
-    KAction * historyAction;
-    KAction * annotationAction;
-    KAction * diffToBaseAction;
-    KAction * revertAction;
-    KAction * diffForRevAction;
-    KAction * diffForRevGlobalAction;
-    KAction * pushAction;
-    KAction * pullAction;
+    QAction* commitAction;
+    QAction* addAction;
+    QAction* updateAction;
+    QAction* historyAction;
+    QAction* annotationAction;
+    QAction* diffToBaseAction;
+    QAction* revertAction;
+    QAction* diffForRevAction;
+    QAction* diffForRevGlobalAction;
+    QAction* pushAction;
+    QAction* pullAction;
     
     void createActions(VcsPluginHelper* parent) {
-        commitAction = new KAction(KIcon("svn-commit"), i18n("Commit..."), parent);
-        updateAction = new KAction(KIcon("svn-update"), i18n("Update"), parent);
-        addAction = new KAction(KIcon("list-add"), i18n("Add"), parent);
-        diffToBaseAction = new KAction(KIcon("text-x-patch"), i18n("Show Differences..."), parent);
-        revertAction = new KAction(KIcon("archive-remove"), i18n("Revert"), parent);
-        historyAction = new KAction(KIcon("view-history"), i18n("History..."), parent);
-        annotationAction = new KAction(KIcon("user-properties"), i18n("Annotation..."), parent);
-        diffForRevAction = new KAction(KIcon("text-x-patch"), i18n("Show Diff..."), parent);
-        diffForRevGlobalAction = new KAction(KIcon("text-x-patch"), i18n("Show Diff (all files)..."), parent);
-        pushAction = new KAction(KIcon("arrow-up-double"), i18n("Push"), parent);
-        pullAction = new KAction(KIcon("arrow-down-double"), i18n("Pull"), parent);
+        commitAction = new QAction(QIcon::fromTheme("svn-commit"), i18n("Commit..."), parent);
+        updateAction = new QAction(QIcon::fromTheme("svn-update"), i18n("Update"), parent);
+        addAction = new QAction(QIcon::fromTheme("list-add"), i18n("Add"), parent);
+        diffToBaseAction = new QAction(QIcon::fromTheme("text-x-patch"), i18n("Show Differences..."), parent);
+        revertAction = new QAction(QIcon::fromTheme("archive-remove"), i18n("Revert"), parent);
+        historyAction = new QAction(QIcon::fromTheme("view-history"), i18n("History..."), parent);
+        annotationAction = new QAction(QIcon::fromTheme("user-properties"), i18n("Annotation..."), parent);
+        diffForRevAction = new QAction(QIcon::fromTheme("text-x-patch"), i18n("Show Diff..."), parent);
+        diffForRevGlobalAction = new QAction(QIcon::fromTheme("text-x-patch"), i18n("Show Diff (all files)..."), parent);
+        pushAction = new QAction(QIcon::fromTheme("arrow-up-double"), i18n("Push"), parent);
+        pullAction = new QAction(QIcon::fromTheme("arrow-down-double"), i18n("Pull"), parent);
         
         connect(commitAction, SIGNAL(triggered()), parent, SLOT(commit()));
         connect(addAction, SIGNAL(triggered()), parent, SLOT(add()));
@@ -141,7 +140,7 @@ struct VcsPluginHelper::VcsPluginHelperPrivate {
         }
         
         QMenu* menu=new QMenu(vcs->name());
-        menu->setIcon(KIcon(ICore::self()->pluginController()->pluginInfo(plugin).icon()));
+        menu->setIcon(QIcon::fromTheme(ICore::self()->pluginController()->pluginInfo(plugin).icon()));
         
         menu->addAction(commitAction);
         if(plugin->extension<IDistributedVersionControl>()) {
@@ -340,30 +339,39 @@ void VcsPluginHelper::diffToBase()
 
 void VcsPluginHelper::diffForRev()
 {
+    if (d->ctxUrls.isEmpty()) {
+        return;
+    }
+    diffForRev(d->ctxUrls.first());
+}
+
+void VcsPluginHelper::diffForRevGlobal()
+{
+    if (d->ctxUrls.isEmpty()) {
+        return;
+    }
+    KUrl url = d->ctxUrls.first();
+    IProject* project = ICore::self()->projectController()->findProjectForUrl( url );
+    if( project ) {
+        url = project->path().toUrl();
+    }
+
+    diffForRev(url);
+}
+
+void VcsPluginHelper::diffForRev(const KUrl& url)
+{
     QAction* action = qobject_cast<QAction*>( sender() );
     Q_ASSERT(action);
     Q_ASSERT(action->data().canConvert<VcsRevision>());
     VcsRevision rev = action->data().value<VcsRevision>();
 
-    SINGLEURL_SETUP_VARS
     ICore::self()->documentController()->saveAllDocuments();
     VcsRevision prev = KDevelop::VcsRevision::createSpecialRevision(KDevelop::VcsRevision::Previous);
-    KDevelop::VcsJob* job = iface->diff(url, prev, rev );
+    KDevelop::VcsJob* job = d->vcs->diff(url, prev, rev );
 
     connect(job, SIGNAL(finished(KJob*)), this, SLOT(diffJobFinished(KJob*)));
     d->plugin->core()->runController()->registerJob(job);
-}
-
-void VcsPluginHelper::diffForRevGlobal()
-{
-    for(int a = 0; a < d->ctxUrls.size(); ++a)
-    {
-        KUrl& url(d->ctxUrls[a]);
-        IProject* project = ICore::self()->projectController()->findProjectForUrl( url );
-        if( project )
-            url = project->folder();
-    }
-    diffForRev();
 }
 
 void VcsPluginHelper::history(const VcsRevision& rev)
@@ -388,7 +396,7 @@ void VcsPluginHelper::annotation()
         doc = ICore::self()->documentController()->openDocument(url);
 
     KTextEditor::AnnotationInterface* annotateiface = qobject_cast<KTextEditor::AnnotationInterface*>(doc->textDocument());
-    KTextEditor::AnnotationViewInterface* viewiface = qobject_cast<KTextEditor::AnnotationViewInterface*>(doc->textDocument()->activeView());
+    KTextEditor::AnnotationViewInterface* viewiface = qobject_cast<KTextEditor::AnnotationViewInterface*>(doc->activeTextView());
     if (viewiface && viewiface->isAnnotationBorderVisible()) {
         viewiface->setAnnotationBorderVisible(false);
         return;
@@ -404,8 +412,8 @@ void VcsPluginHelper::annotation()
 
         QColor foreground(Qt::black);
         QColor background(Qt::white);
-        if ( KTextEditor::HighlightInterface* iface = qobject_cast<KTextEditor::HighlightInterface*>(doc->textDocument()) ) {
-            KTextEditor::Attribute::Ptr style = iface->defaultStyle(KTextEditor::HighlightInterface::dsNormal);
+        if (KTextEditor::View* view = doc->activeTextView()) {
+            KTextEditor::Attribute::Ptr style = view->defaultStyleAttribute(KTextEditor::dsNormal);
             foreground = style->foreground().color();
             if (style->hasProperty(QTextFormat::BackgroundBrush)) {
                 background = style->background().color();
@@ -417,7 +425,7 @@ void VcsPluginHelper::annotation()
                                                                                    foreground, background);
             annotateiface->setAnnotationModel(model);
             viewiface->setAnnotationBorderVisible(true);
-            connect(doc->textDocument()->activeView(),
+            connect(doc->activeTextView(),
                     SIGNAL(annotationContextMenuAboutToShow(KTextEditor::View*,QMenu*,int)),
                     this, SLOT(annotationContextMenuAboutToShow(KTextEditor::View*,QMenu*,int)));
         } else {
@@ -474,8 +482,8 @@ void VcsPluginHelper::annotationContextMenuAboutToShow( KTextEditor::View* view,
     menu->addSeparator();
     menu->addAction(d->diffForRevAction);
     menu->addAction(d->diffForRevGlobalAction);
-    menu->addAction(new FlexibleAction(KIcon("edit-copy"), i18n("Copy Revision"), new CopyFunction(rev.revisionValue().toString()), menu));
-    menu->addAction(new FlexibleAction(KIcon("view-history"), i18n("History..."), new HistoryFunction(this, rev), menu));
+    menu->addAction(new FlexibleAction(QIcon::fromTheme("edit-copy"), i18n("Copy Revision"), new CopyFunction(rev.revisionValue().toString()), menu));
+    menu->addAction(new FlexibleAction(QIcon::fromTheme("view-history"), i18n("History..."), new HistoryFunction(this, rev), menu));
 }
 
 void VcsPluginHelper::update()
@@ -526,4 +534,3 @@ void VcsPluginHelper::pull()
 }
 
 
-#include "vcspluginhelper.moc"

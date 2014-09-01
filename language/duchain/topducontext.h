@@ -25,7 +25,7 @@
 #include <QMetaType>
 
 template< class T >
-class KSharedPtr;
+class QExplicitlySharedDataPointer;
 
 namespace KDevelop
 {
@@ -52,7 +52,7 @@ namespace KDevelop
   
   typedef DUChainPointer<TopDUContext> TopDUContextPointer;
 
-  typedef KSharedPtr<Problem> ProblemPointer;
+  typedef QExplicitlySharedDataPointer<Problem> ProblemPointer;
 
 ///KDevelop can unload unused top-context at any time. To prevent unloading,
 ///keep a ReferencedTopDUContext.
@@ -123,7 +123,7 @@ public:
    * @see ParsingEnvironmentFile
    * May return zero if no file was set.
    * */
-  KSharedPtr<ParsingEnvironmentFile> parsingEnvironmentFile() const;
+  QExplicitlySharedDataPointer<ParsingEnvironmentFile> parsingEnvironmentFile() const;
 
   /// Returns true if this object is being deleted, otherwise false.
   bool deleting() const;
@@ -176,15 +176,7 @@ public:
   enum {
     Identity = 4
   };
-  
-  enum Flags {
-    NoFlags = 0,
-    ///Can be used by language parts to mark contexts they currently update(for their internal usage)
-    UpdatingContext = 1,
-    ///You can define own language-dependent flags behind this flag
-    LastFlag = 2
-  };
-  
+
   enum Features {
     ///Top-context features standard that can be requested from the duchain, and that are stored in the features() member.
     Empty = 0, //Only the top-context structure (imports etc.) is built, but no declarations and no contexts
@@ -241,13 +233,7 @@ public:
    * Recursively deletes all contained uses, declaration-indices, etc.
    */
   virtual void deleteUsesRecursively();
-  
-  /**
-   * Use flags to mark top-contexts for special behavior. Any flags above LastFlag may be used for language-specific stuff.
-   * */
-  Flags flags() const;
-  void setFlags(Flags f);
-  
+
   /**
    * Returns the AST Container, that contains the AST created during parsing.
    * This is only created if you request the AST feature for parsing.
@@ -256,12 +242,12 @@ public:
    *
    * @todo Figure out logic to get rid of AST when it is not needed/useful
    */
-  KSharedPtr<IAstContainer> ast() const;
+  QExplicitlySharedDataPointer<IAstContainer> ast() const;
   
   /**
    * Sets the AST Container.
   */
-  void setAst(KSharedPtr<IAstContainer> ast);
+  void setAst(QExplicitlySharedDataPointer<IAstContainer> ast);
   
   /**
    * Utility function to clear the AST Container
